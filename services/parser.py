@@ -220,7 +220,8 @@ async def insert_comments(url):
 if __name__ == '__main__':
     date = 12042024
     loop = asyncio.get_event_loop()
-    for cat in [8, 16, 67, 51]:
-        for i in range(50):
-            loop.run_until_complete(get_videos_guids(cat, date, i))
+    # for cat in [8, 16, 67, 51]:
+    #     for i in range(50):
+            # loop.run_until_complete(get_videos_guids(cat, date, i))
+    loop.run_until_complete(likes_dislikes())
     loop.close()
