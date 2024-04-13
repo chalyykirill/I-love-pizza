@@ -233,7 +233,49 @@ async def get_videos_guids(category_id:int, date:int, page:int):
                 await session.commit()
 
 
-
+async def insert_child_comments(url, parent_id):
+    fin_url = CHILD_COMMENTS_API.format(url, parent_id)
+    response = requests.get(fin_url).json()
+    comments = []
+    with response["results"] as res:
+        for elind in range(len(res)):
+            comments.append(Comment(
+                id = res[elind]["id"],
+                video_id = url,
+                root_id = None, # TODO решить, что именно заполняется: ничего или ничего
+                text = res[elind]["text"],
+                tone = None,
+                likes = res[elind]["likes_number"],
+                dislikes = res[elind]["dislikes_number"],
+                ))
+            """ # Ярослав сказал "Рекурсия замкнёт асинхронный вызов" или что-то такое. Но так теряются ответы на ответы. Но таких на Рутьюбе 0
+            if res[elind]["replies_number"]:
+                asyncio.run(insert_child_comments(url, res[elind]["id"]))
+            """
+    s = get_session()
+    s.add(comments)
+    await s.commit()
+    
+async def insert_comments(url):
+    fin_url = COMMENTS_API.format(url)
+    response = requests.get(fin_url).json()
+    comments = []
+    with response["results"] as res:
+        for elind in range(len(res)):
+            comments.append(Comment(
+                id = res[elind]["id"],
+                video_id = url,
+                root_id = None, # TODO решить, что именно заполняется: ничего или ничего
+                text = res[elind]["text"],
+                tone = None,
+                likes = res[elind]["likes_number"],
+                dislikes = res[elind]["dislikes_number"],
+                ))
+            if res[elind]["replies_number"]:
+                asyncio.run(insert_child_comments(url, res[elind]["id"]))
+    s = get_session()
+    s.add(comments)
+    await s.commit()
 
 if __name__ == '__main__':
     date = 13042024
