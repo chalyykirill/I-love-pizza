@@ -1,10 +1,8 @@
 import sqlalchemy as sa
-from sqlalchemy.ext.declarative import declarative_base
+from database.connector import engine
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.mutable import MutableDict
-
-from database.connector import engine, get_session, get_connection, execute_query
-
 BaseModel = declarative_base()
 
 class Video(BaseModel):
@@ -15,10 +13,12 @@ class Video(BaseModel):
     video_url = sa.Column(sa.Text, nullable=False)
     title = sa.Column(sa.Text, nullable=False)
     description = sa.Column(sa.Text)
+    description_tone = sa.Column(sa.String)
     duration = sa.Column(sa.Integer, nullable=False)
     hits = sa.Column(sa.Integer, nullable=False)
-    likes = sa.Column(sa.Integer, nullable=False)
-    pg_rating = sa.Column(sa.Text)
+    likes = sa.Column(sa.Integer)
+    dislikes = sa.Column(sa.Integer)
+    pg_rating = sa.Column(sa.Integer)
     category_name = sa.Column(sa.Text)
     allowed_territories = sa.Column(MutableDict.as_mutable(JSONB))
     disallowed_territories = sa.Column(MutableDict.as_mutable(JSONB))
