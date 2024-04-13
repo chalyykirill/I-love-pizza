@@ -97,6 +97,8 @@ CHILD_COMMENTS_API = 'https://rutube.ru/api/comments/video/{}/?parent_id={}' # g
 
 VOTE_API = 'https://rutube.ru/api/numerator/video/{}/vote'
 
+VIDEO_LIKES_DISLIKES_API = "https://rutube.ru/api/numerator/video/{}/vote"
+
 
 def get_categories():
     return requests.get(CATEGORIES_API).json()
@@ -231,6 +233,23 @@ async def get_videos_guids(category_id:int, date:int, page:int):
                         )
                         session.add(video)
                 await session.commit()
+
+async def likes_dislikes():
+    async with get_session() as  session:
+        stmt = select(Video)
+        res = await session.execute(stmt)
+        videos = []
+        for row in res.scalars():
+            fin_url = VIDEO_LIKES_DISLIKES_API.format(row["video_url"])
+            response = requests.get(fin_url).json()
+            videos.append(
+                Video(
+                    lkes = response["positive"],
+                    dislikes = response["negative"]
+                )
+            )
+        session.update(videos)
+        await session.commit()
 
 
 async def insert_child_comments(url, parent_id):
