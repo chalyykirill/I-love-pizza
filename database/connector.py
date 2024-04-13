@@ -12,7 +12,7 @@ engine = create_async_engine(DATABASE_URL, echo=True)
 async def get_session():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)()
+    session = sessionmaker(engine, expire_on_commit=True, class_=AsyncSession)()
     try:
         yield session
         await session.commit()

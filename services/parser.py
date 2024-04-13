@@ -37,56 +37,7 @@ async def parse_categories():
             session.add(category)
             await session.commit()
 
-
-async def insert_child_comments(url, parent_id):
-    fin_url = CHILD_COMMENTS_API.format(url, parent_id)
-    response = requests.get(fin_url).json()
-    comments = []
-    with response["results"] as res:
-        for elind in range(len(res)):
-            comments.append(Comment(
-                id = res[elind]["id"],
-                video_id = url,
-                root_id = None, # TODO решить, что именно заполняется: ничего или ничего
-                text = res[elind]["text"],
-                tone = None,
-                likes = res[elind]["likes_number"],
-                dislikes = res[elind]["dislikes_number"],
-                ))
-            """ # Ярослав сказал "Рекурсия замкнёт асинхронный вызов" или что-то такое. Но так теряются ответы на ответы. Но таких на Рутьюбе 0
-            if res[elind]["replies_number"]:
-                asyncio.run(insert_child_comments(url, res[elind]["id"]))
-            """
-    s = get_session()
-    s.add(comments)
-    await s.commit()
-    
-async def insert_comments(url):
-    fin_url = COMMENTS_API.format(url)
-    response = requests.get(fin_url).json()
-    comments = []
-    with response["results"] as res:
-        for elind in range(len(res)):
-            comments.append(Comment(
-                id = res[elind]["id"],
-                video_id = url,
-                root_id = None, # TODO решить, что именно заполняется: ничего или ничего
-                text = res[elind]["text"],
-                tone = None,
-                likes = res[elind]["likes_number"],
-                dislikes = res[elind]["dislikes_number"],
-                ))
-            if res[elind]["replies_number"]:
-                asyncio.run(insert_child_comments(url, res[elind]["id"]))
-    s = get_session()
-    s.add(comments)
-    await s.commit()
-
 async def get_videos_guids(category_id:int, date:int, page:int):
-    # async increment 'page' param till response is not
-    # {
-    # "detail": "Неправильная страница"
-    # }
     url = VIDEOS_URLS_API.format(id=category_id, date=date)
     async with aiohttp.ClientSession() as session:
         async with session.get(url+f"?page={page}") as response:
@@ -134,6 +85,7 @@ async def get_videos_guids(category_id:int, date:int, page:int):
                         stmt = select(Video).where(Video.guid == guid)
                         res = await session.execute(stmt)
                         a = res.scalars().first()
+
                         if a:
                             continue
                         video = Video(
@@ -153,55 +105,59 @@ async def get_videos_guids(category_id:int, date:int, page:int):
                         session.add(video)
                 await session.commit()
 
-
-async def insert_child_comments(url, parent_id):
-    fin_url = CHILD_COMMENTS_API.format(url, parent_id)
-    response = requests.get(fin_url).json()
-    comments = []
-    with response["results"] as res:
-        for elind in range(len(res)):
-            comments.append(Comment(
-                id = res[elind]["id"],
-                video_id = url,
-                root_id = None, # TODO решить, что именно заполняется: ничего или ничего
-                text = res[elind]["text"],
-                tone = None,
-                likes = res[elind]["likes_number"],
-                dislikes = res[elind]["dislikes_number"],
-                ))
-            """ # Ярослав сказал "Рекурсия замкнёт асинхронный вызов" или что-то такое. Но так теряются ответы на ответы. Но таких на Рутьюбе 0
-            if res[elind]["replies_number"]:
-                asyncio.run(insert_child_comments(url, res[elind]["id"]))
-            """
-    s = get_session()
-    s.add(comments)
-    await s.commit()
-    
 async def insert_comments(url):
     fin_url = COMMENTS_API.format(url)
-    response = requests.get(fin_url).json()
-    comments = []
-    with response["results"] as res:
-        for elind in range(len(res)):
-            comments.append(Comment(
-                id = res[elind]["id"],
-                video_id = url,
-                root_id = None, # TODO решить, что именно заполняется: ничего или ничего
-                text = res[elind]["text"],
-                tone = None,
-                likes = res[elind]["likes_number"],
-                dislikes = res[elind]["dislikes_number"],
-                ))
-            if res[elind]["replies_number"]:
-                asyncio.run(insert_child_comments(url, res[elind]["id"]))
-    s = get_session()
-    s.add(comments)
-    await s.commit()
+    # response = requests.get(fin_url).json()
+    async with aiohttp.ClientSession() as session:
+        async with session.get(fin_url) as response:
+            response = await response.json()
+            try:
+                num_pages = int(response['num_pages'])
+            except KeyError:
+                return
+            results = response['results']
+            for page in range(2, num_pages+1):
+                async with session.get(fin_url+f"?page={page}") as response:
+                    response = await response.json()
+                    results.extend(response['results'])
+            for comment in results:
+                id = int(comment['id'])
+                text = comment['text']
+                video_id = comment['video_id']
+                likes = comment['likes_number']
+                dislikes = comment['dislikes_number']
+                parent_id = comment['parent_id']
+                async with get_session() as session:
+                    stmt = select(Comment).where(Comment.id == id)
+                    res = await session.execute(stmt)
+                    a = res.scalars().first()
+                    if a:
+                        continue
+                    comment = Comment(
+                        id=id,
+                        video_id=video_id,
+                        root_id=parent_id,
+                        text=text,
+                        likes=likes,
+                        dislikes=dislikes
+                    )
+                    session.add(comment)
+                await session.commit()
+
+async def get_comments():
+    async with get_session() as session:
+        stmt = select(Video.guid)
+        res = await session.execute(stmt)
+        guids = [r[0] for r in res.fetchall()]
+        for guid in guids:
+            await insert_comments(guid)
+
 
 if __name__ == '__main__':
-    date = 12042024
+    date = '05042024'
     loop = asyncio.get_event_loop()
     for cat in [8, 16, 67, 51]:
         for i in range(50):
             loop.run_until_complete(get_videos_guids(cat, date, i))
+    # loop.run_until_complete(get_comments())
     loop.close()

@@ -56,8 +56,8 @@ class Category(BaseModel):
 class Comment(BaseModel):
     __tablename__ = 'Comment'
 
-    id = sa.Column(sa.Integer, primary_key=True, nullable=False, index=True, unique=True)
-    video_id = sa.Column(sa.Integer, sa.ForeignKey('Video.id'), nullable=False)
+    id = sa.Column(sa.BigInteger, primary_key=True, nullable=False, index=True, unique=True)
+    video_id = sa.Column(sa.Text, sa.ForeignKey('Video.guid'), nullable=False)
     video = sa.orm.relationship('Video', back_populates='comments')
     root_id = sa.Column(sa.Integer, sa.ForeignKey('Comment.id'), default=None)
     answers = sa.orm.relationship('Comment', back_populates='root')
