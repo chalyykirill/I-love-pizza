@@ -109,30 +109,6 @@ async def get_videos_guids(category_id:int, date:int, page:int):
                         session.add(video)
                 await session.commit()
 
-
-async def insert_child_comments(url, parent_id):
-    fin_url = CHILD_COMMENTS_API.format(url, parent_id)
-    response = requests.get(fin_url).json()
-    comments = []
-    with response["results"] as res:
-        for elind in range(len(res)):
-            comments.append(Comment(
-                id = res[elind]["id"],
-                video_id = url,
-                root_id = None, # TODO решить, что именно заполняется: ничего или ничего
-                text = res[elind]["text"],
-                tone = None,
-                likes = res[elind]["likes_number"],
-                dislikes = res[elind]["dislikes_number"],
-                ))
-            """ # Ярослав сказал "Рекурсия замкнёт асинхронный вызов" или что-то такое. Но так теряются ответы на ответы. Но таких на Рутьюбе 0
-            if res[elind]["replies_number"]:
-                asyncio.run(insert_child_comments(url, res[elind]["id"]))
-            """
-    s = get_session()
-    s.add(comments)
-    await s.commit()
-
 async def insert_comments(url):
     fin_url = COMMENTS_API.format(url)
     # response = requests.get(fin_url).json()
@@ -180,6 +156,19 @@ async def get_comments():
         for guid in guids:
             await insert_comments(guid)
 
+async def likes_dislikes():
+    async with get_session() as  session:
+        stmt = select(Video)
+        res = await session.execute(stmt)
+        videos = []
+        for row in res.scalars().all():
+            fin_url = VIDEO_LIKES_DISLIKES_API.format(row)
+            response = requests.get(fin_url).json()
+            videos.likes = int(response["positive"])
+            videos.dislikes = int(response["negative"])
+        session.update(videos)
+        await session.commit()
+
 
 if __name__ == '__main__':
     date = '05042024'
@@ -187,5 +176,4 @@ if __name__ == '__main__':
     for cat in [8, 16, 67, 51]:
         for i in range(50):
             loop.run_until_complete(get_videos_guids(cat, date, i))
-    # loop.run_until_complete(get_comments())
     loop.close()
