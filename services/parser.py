@@ -1,10 +1,12 @@
-from database.connector import engine, get_session, get_connection, execute_query
-from models.model import Video, Author, Category, Comment
-from sqlalchemy import select
-import requests
-import aiohttp
 import asyncio
 from datetime import datetime
+
+import aiohttp
+import requests
+from database.connector import get_session
+from models.model import Author, Category, Comment, Video
+from sqlalchemy import select
+from sqlalchemy import select
 
 CATEGORIES_API = 'https://rutube.ru/api/video/category/'
 VIDEOS_URLS_API = 'https://rutube.ru/api/video/category/{id}/{date}/'
@@ -17,6 +19,8 @@ AUTORS_API = 'https://rutube.ru/api/video/person/{}/'# id/
 CHILD_COMMENTS_API = 'https://rutube.ru/api/comments/video/{}/?parent_id={}' # guid/ parent_id/
 
 VOTE_API = 'https://rutube.ru/api/numerator/video/{}/vote'
+
+VIDEO_LIKES_DISLIKES_API = "https://rutube.ru/api/numerator/video/{}/vote"
 
 
 def get_categories():
@@ -104,6 +108,30 @@ async def get_videos_guids(category_id:int, date:int, page:int):
                         )
                         session.add(video)
                 await session.commit()
+
+
+async def insert_child_comments(url, parent_id):
+    fin_url = CHILD_COMMENTS_API.format(url, parent_id)
+    response = requests.get(fin_url).json()
+    comments = []
+    with response["results"] as res:
+        for elind in range(len(res)):
+            comments.append(Comment(
+                id = res[elind]["id"],
+                video_id = url,
+                root_id = None, # TODO решить, что именно заполняется: ничего или ничего
+                text = res[elind]["text"],
+                tone = None,
+                likes = res[elind]["likes_number"],
+                dislikes = res[elind]["dislikes_number"],
+                ))
+            """ # Ярослав сказал "Рекурсия замкнёт асинхронный вызов" или что-то такое. Но так теряются ответы на ответы. Но таких на Рутьюбе 0
+            if res[elind]["replies_number"]:
+                asyncio.run(insert_child_comments(url, res[elind]["id"]))
+            """
+    s = get_session()
+    s.add(comments)
+    await s.commit()
 
 async def insert_comments(url):
     fin_url = COMMENTS_API.format(url)
