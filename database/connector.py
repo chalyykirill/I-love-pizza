@@ -1,4 +1,3 @@
-import asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql import text
@@ -8,7 +7,7 @@ DATABASE_URL = "postgresql+asyncpg://hackathon-user-03:M5nOpQ6rSt@10.28.51.4:543
 engine = create_async_engine(DATABASE_URL, echo=True)
 
 def get_session():
-    return sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    return sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)()
 
 def get_connection():
     return engine.connect()
