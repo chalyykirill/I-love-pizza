@@ -1,0 +1,59 @@
+﻿-- Имена авторов и количество их видео
+select a.name, count(v.id) as count_video
+from 
+"Video" as v
+join
+"Author" as a 
+on 
+v.autor_id = a.id
+group by a.name
+order by count_video desc;
+
+-- Имена категорий и количество их видео
+select c.name, count(v.id) as count_video
+from 
+"Video" as v
+join
+"Category" as c 
+on 
+v.category_id = c.id
+group by c.name
+order by count_video desc;
+
+-- Имя видео, автор видео, просмотры, продолжительность видео. Где встречается слово "сво"
+select 
+	v.title, 
+	a.name, 
+	v.hits,
+	v.duration 
+from 
+	"Video" as v
+	join
+	"Author" as a 
+	on 
+	v.autor_id = a.id
+where 
+	(LOWER(v.title) like '%сво%' 
+	or LOWER(v.description) like '%сво%')
+order by hits desc;
+
+
+-- количества видео, в которых встречается слово "россия", для каждого жанра
+select c.name, count(v.id) as count_video
+from 
+	"Video" as v
+join
+	"Category" as c
+on 
+	v.category_id = c.id
+where 
+	(LOWER(v.title) like '%россия%' 
+	or LOWER(v.description) like '%россия%')
+group by c.name
+order by count_video desc 
+;
+
+-- Самый залайканный коммент
+select text, like 
+from "Comment"
+order by like desc;
